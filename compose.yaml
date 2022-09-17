@@ -1,0 +1,64 @@
+services:
+  vpngate:
+    build:
+      context: ./docker/vpngate
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - "/dev/net/tun"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    networks:
+      - vpngate_nw
+    expose:
+      - 8118
+
+  mitmproxy:
+    build:
+      context: ./docker/mitmproxy
+    command: >
+      bash -c "mitmweb --web-host 0.0.0.0 --set confdir=/home/mitmproxy/.mitmproxy \
+      --set relax_http_form_validation \
+      --ignore-hosts '(mozilla\.com|mozilla\.net|detectportal\.firefox\.com)' \
+      --mode upstream:http://vpngate:8118"
+    ports:
+      - "8080:8081"
+    tty: true
+    networks:
+      - vpngate_nw
+      - mitm_nw
+    volumes:
+      - mitm-volume:/home/mitmproxy/.mitmproxy/
+      - ./configs/mitmproxy/config.yaml:/home/mitmproxy/.mitmproxy/config.yaml
+
+  firefox:
+    build:
+      context: https://github.com/jlesage/docker-firefox.git
+      shm_size: "2gb"
+    ports:
+      - "5800:5800"
+    volumes:
+      - firefox-volume:/config:rw
+      - mitm-volume:/config/certs/
+    networks:
+      - mitm_nw
+    environment:
+      - FF_PREF_PROXY_TYPE=network.proxy.type=1
+      - FF_PREF_HTTP_PROXY=network.proxy.http=\"mitmproxy\"
+      - FF_PREF_HTTP_PROXY_PORT=network.proxy.http_port=8080
+      - FF_PREF_HTTPS_PROXY=network.proxy.ssl=\"mitmproxy\"
+      - FF_PREF_HTTPS_PROXY_PORT=network.proxy.ssl_port=8080
+      - FF_PREF_CAPTIVE_PORTAL=network.captive-portal-service.enabled=false
+      - DISPLAY_WIDTH=1750
+      - DISPLAY_HEIGHT=765
+      - ENABLE_CJK_FONT=1
+      - intl.locale.requested="ja"
+
+volumes:
+  mitm-volume:
+  firefox-volume:
+
+networks:
+  vpngate_nw:
+  mitm_nw:

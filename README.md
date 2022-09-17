@@ -2,7 +2,7 @@
 
 Firefox + mitmproxy + VPN Gate
  
-Secure browsing in Firefox with VPN Gate and view traffic by mitm.
+Secure browsing in Firefox with VPN Gate and view traffic by mitmproxy.
 
 ## Start
 
